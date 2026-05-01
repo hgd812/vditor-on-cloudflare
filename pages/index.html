@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>Online Markdown Editor</title>
+<link rel="stylesheet" href="https://unpkg.com/vditor@3.11.2/dist/index.css" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; background: #f5f6f7; }
+
+  /* 顶部导航 */
+  .header { display: flex; align-items: center; justify-content: space-between; height: 48px; padding: 0 20px; background: #fff; border-bottom: 1px solid #e8e8e8; flex-shrink: 0; }
+  .header__logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: #333; text-decoration: none; }
+  .header__logo svg { width: 24px; height: 24px; fill: #409eff; }
+  .header__actions { display: flex; gap: 14px; }
+  .header__actions a { color: #666; text-decoration: none; font-size: 13px; transition: color 0.2s; }
+  .header__actions a:hover { color: #409eff; }
+
+  /* 主体区域 */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* 左侧文档列表 */
+  .sidebar { width: 240px; background: #fff; border-right: 1px solid #e8e8e8; display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar__header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #f0f0f0; }
+  .sidebar__title { font-size: 14px; font-weight: 600; color: #333; }
+  .sidebar__list { flex: 1; overflow-y: auto; padding: 6px 0; }
+  .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; cursor: pointer; font-size: 13px; color: #555; transition: background 0.15s; border-left: 3px solid transparent; }
+  .doc-item:hover { background: #f5f6f7; }
+  .doc-item--active { background: #eaf2fd; color: #409eff; border-left-color: #409eff; font-weight: 500; }
+  .doc-item__title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-item__actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+  .doc-item:hover .doc-item__actions { opacity: 1; }
+  .doc-item__btn { width: 24px; height: 24px; border: none; background: none; cursor: pointer; color: #999; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .doc-item__btn:hover { background: #e0e0e0; color: #333; }
+  .doc-item__btn--danger:hover { background: #fee; color: #e74c3c; }
+  .sidebar__footer { padding: 10px 16px; border-top: 1px solid #f0f0f0; }
+  .sidebar__new-btn { width: 100%; padding: 8px 0; border: 1px dashed #d0d0d0; background: #fafafa; border-radius: 6px; cursor: pointer; font-size: 13px; color: #666; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .sidebar__new-btn:hover { border-color: #409eff; color: #409eff; background: #f0f6ff; }
+
+  /* 右侧编辑器 */
+  .editor-area { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  #vditor { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 顶部导航 -->
+  <header class="header">
+    <a class="header__logo" href="/" title="Markdown Editor">
+      <svg viewBox="0 0 24 24"><path d="M20.56 18H3.44C2.65 18 2 17.37 2 16.56V7.44C2 6.63 2.65 6 3.44 6h17.12c.79 0 1.44.63 1.44 1.44v9.12c0 .81-.65 1.44-1.44 1.44zM6.81 15.19v-3.66l1.92 2.35 1.92-2.35v3.66h1.93V8.81h-1.93l-1.92 2.35-1.92-2.35H4.88v6.38h1.93zM19.2 12.38l-2.4-2.89v3.75h-1.93V8.81h1.93l2.4 3.1V8.81h1.93v6.38h-1.93v-2.81z"/></svg>
+      Markdown Editor
+    </a>
+    <nav class="header__actions">
+      <a href="https://github.com/nicejade/markdown-online-editor" target="_blank">GitHub</a>
+      <a href="#" onclick="toggleFullscreen()">全屏</a>
+      <a href="#" onclick="exportMarkdown()">导出 MD</a>
+    </nav>
+  </header>
+
+  <!-- 主体 -->
+  <div class="main">
+    <!-- 左侧文档列表 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <span class="sidebar__title">文档列表</span>
+      </div>
+      <div class="sidebar__list" id="docList"></div>
+      <div class="sidebar__footer">
+        <button class="sidebar__new-btn" onclick="createNewDoc()">
+          <span>+</span> 新建文档
+        </button>
+      </div>
+    </aside>
+
+    <!-- 右侧编辑器 -->
+    <div class="editor-area">
+      <div id="vditor"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/vditor@3.11.2/dist/index.min.js"></script>
+<script>
+  const UPLOAD_URL = 'https://vditor-upload.book888.workers.dev';
+  const STORAGE_PREFIX = 'md_docs_';
+  const ACTIVE_DOC_KEY = 'md_active_doc';
+
+  let vditorInstance = null;
+  let currentDocId = null;
+  let docList = [];
+
+  // 初始化文档列表
+  function initDocs() {
+    const stored = localStorage.getItem(STORAGE_PREFIX + 'list');
+    if (stored) {
+      docList = JSON.parse(stored);
+    } else {
+      docList = [{ id: generateId(), title: '未命名文档', content: '', createdAt: Date.now() }];
+      saveDocList();
+    }
+    const activeId = localStorage.getItem(ACTIVE_DOC_KEY);
+    if (activeId && docList.find(d => d.id === activeId)) {
+      currentDocId = activeId;
+    } else {
+      currentDocId = docList[0].id;
+      localStorage.setItem(ACTIVE_DOC_KEY, currentDocId);
+    }
+    renderDocList();
+  }
+
+  function generateId() {
+    return 'doc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  function saveDocList() {
+    localStorage.setItem(STORAGE_PREFIX + 'list', JSON.stringify(docList));
+  }
+
+  function saveDocContent(id, content) {
+    localStorage.setItem(STORAGE_PREFIX + id, content);
+  }
+
+  function getDocContent(id) {
+    return localStorage.getItem(STORAGE_PREFIX + id) || '';
+  }
+
+  function renderDocList() {
+    const container = document.getElementById('docList');
+    container.innerHTML = docList.map(doc =>
+      `<div class="doc-item ${doc.id === currentDocId ? 'doc-item--active' : ''}" onclick="switchDoc('${doc.id}')">
+        <span class="doc-item__title" title="${escapeHtml(doc.title)}">${escapeHtml(doc.title)}</span>
+        <span class="doc-item__actions">
+          <button class="doc-item__btn" title="重命名" onclick="event.stopPropagation();renameDoc('${doc.id}')">✎</button>
+          <button class="doc-item__btn doc-item__btn--danger" title="删除" onclick="event.stopPropagation();deleteDoc('${doc.id}')">✕</button>
+        </span>
+      </div>`
+    ).join('');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function switchDoc(id) {
+    if (id === currentDocId) return;
+    // 保存当前内容
+    if (currentDocId && vditorInstance) {
+      const content = vditorInstance.getValue();
+      saveDocContent(currentDocId, content);
+    }
+    currentDocId = id;
+    localStorage.setItem(ACTIVE_DOC_KEY, id);
+    renderDocList();
+    loadDocToEditor(id);
+  }
+
+  function createNewDoc() {
+    if (vditorInstance && currentDocId) {
+      saveDocContent(currentDocId, vditorInstance.getValue());
+    }
+    const newDoc = { id: generateId(), title: '未命名文档', content: '', createdAt: Date.now() };
+    docList.unshift(newDoc);
+    saveDocList();
+    currentDocId = newDoc.id;
+    localStorage.setItem(ACTIVE_DOC_KEY, currentDocId);
+    renderDocList();
+    loadDocToEditor(newDoc.id);
+  }
+
+  function renameDoc(id) {
+    const doc = docList.find(d => d.id === id);
+    if (!doc) return;
+    const newTitle = prompt('重命名文档：', doc.title);
+    if (newTitle !== null && newTitle.trim() !== '') {
+      doc.title = newTitle.trim();
+      saveDocList();
+      renderDocList();
+    }
+  }
+
+  function deleteDoc(id) {
+    if (docList.length <= 1) {
+      alert('至少保留一个文档');
+      return;
+    }
+    if (!confirm('确定删除该文档吗？此操作不可恢复。')) return;
+    localStorage.removeItem(STORAGE_PREFIX + id);
+    docList = docList.filter(d => d.id !== id);
+    saveDocList();
+    if (currentDocId === id) {
+      currentDocId = docList[0].id;
+      localStorage.setItem(ACTIVE_DOC_KEY, currentDocId);
+      loadDocToEditor(currentDocId);
+    }
+    renderDocList();
+  }
+
+  function loadDocToEditor(id) {
+    const content = getDocContent(id);
+    if (vditorInstance) {
+      vditorInstance.setValue(content, true);
+    }
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      document.documentElement.requestFullscreen();
+    }
+  }
+
+  function exportMarkdown() {
+    if (!vditorInstance) return;
+    const content = vditorInstance.getValue();
+    const doc = docList.find(d => d.id === currentDocId);
+    const filename = (doc ? doc.title : 'document') + '.md';
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // 初始化编辑器
+  function initEditor() {
+    const initialContent = getDocContent(currentDocId);
+    vditorInstance = new Vditor('vditor', {
+      height: '100%',
+      mode: 'ir',
+      placeholder: '开始写作…',
+      theme: 'classic',
+      icon: 'ant',
+      value: initialContent,
+      toolbar: [
+        'emoji', 'headings', 'bold', 'italic', 'strike', '|',
+        'line', 'quote', 'list', 'ordered-list', 'check', '|',
+        'code', 'inline-code', '|',
+        'upload', 'link', 'table', '|',
+        'undo', 'redo', '|',
+        'edit-mode', 'both', 'preview', 'fullscreen', 'outline', 'export', 'br'
+      ],
+      cache: { enable: false },
+      preview: { mode: 'both' },
+      upload: {
+        url: UPLOAD_URL,
+        fieldName: 'file[]',
+        max: 10 * 1024 * 1024,
+      },
+      after: function() {
+        // 编辑器初始化完成后，实时保存
+        vditorInstance.vditor.input.element.addEventListener('input', function() {
+          if (currentDocId) {
+            saveDocContent(currentDocId, vditorInstance.getValue());
+          }
+        });
+      }
+    });
+  }
+
+  // 启动
+  initDocs();
+  initEditor();
+</script>
+</body>
+</html>
