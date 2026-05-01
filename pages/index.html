@@ -1,42 +1,122 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8" />
-<title>Online Markdown Editor - Vditor</title>
-<link rel="stylesheet" href="https://unpkg.com/vditor@3.11.2/dist/index.css" />
-<style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-  #editor { height: 100vh; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Markdown Editor - Vditor</title>
+  <link rel="stylesheet" href="https://unpkg.com/vditor@3.11.2/dist/index.css" />
+  <style>
+    /* 全局背景与布局 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #f0f2f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei",
+        sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* 主卡片容器 */
+    .editor-card {
+      width: 100%;
+      max-width: 1100px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08),
+        0 8px 24px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 48px);
+      min-height: 600px;
+    }
+
+    /* Vditor 根元素撑满卡片 */
+    #editor {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    /* 工具栏微调 */
+    .vditor-toolbar {
+      background: #fafafa;
+      border-bottom: 1px solid #f0f0f0;
+      border-radius: 12px 12px 0 0;
+      padding: 4px 8px;
+    }
+
+    /* 编辑区 */
+    .vditor-content {
+      flex: 1;
+      background: #fff;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    .vditor-content .vditor-ir {
+      padding: 20px;
+    }
+
+    /* 预览区 */
+    .vditor-preview {
+      background: #fcfcfc;
+    }
+
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #d0d5dd;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
 </head>
 <body>
-<div id="editor"></div>
-<script src="https://unpkg.com/vditor@3.11.2/dist/index.min.js"></script>
-<script>
-  const UPLOAD_URL = 'https://vditor-upload.book888.workers.dev';
+  <div class="editor-card">
+    <div id="editor"></div>
+  </div>
 
-  new Vditor('editor', {
-    height: '100vh',
-    mode: 'ir',
-    placeholder: '开始写作…',
-    theme: 'classic',
-    icon: 'ant',
-    toolbar: [
-      'emoji', 'headings', 'bold', 'italic', 'strike', '|',
-      'line', 'quote', 'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
-      'code', 'inline-code', 'insert-after', 'insert-before', '|',
-      'upload', 'link', 'table', '|',
-      'record', 'edit-mode', 'both', 'preview', 'fullscreen', 'outline',
-      'code-theme', 'content-theme', 'export', 'devtools', 'info', 'help', 'br'
-    ],
-    cache: { enable: true, id: 'editor' },
-    preview: { mode: 'both' },
-    upload: {
-      url: UPLOAD_URL,
-      fieldName: 'file[]',
-      max: 10 * 1024 * 1024
-    }
-  });
-</script>
+  <script src="https://unpkg.com/vditor@3.11.2/dist/index.min.js"></script>
+  <script>
+    // 替换为你的 Worker 上传地址
+    const UPLOAD_URL = "https://vditor-upload.book888.workers.dev";
+
+    const vditor = new Vditor("editor", {
+      height: "100%",
+      mode: "ir",
+      placeholder: "开始写作…",
+      theme: "classic",
+      icon: "ant",
+      toolbar: [
+        "emoji", "headings", "bold", "italic", "strike", "|",
+        "line", "quote", "list", "ordered-list", "check", "outdent", "indent", "|",
+        "code", "inline-code", "insert-after", "insert-before", "|",
+        "upload", "link", "table", "|",
+        "record", "edit-mode", "both", "preview", "fullscreen", "outline",
+        "code-theme", "content-theme", "export", "devtools", "info", "help", "br"
+      ],
+      cache: { enable: false },
+      preview: { mode: "both" },
+      upload: {
+        url: UPLOAD_URL,
+        fieldName: "file[]",
+        max: 10 * 1024 * 1024
+      }
+    });
+  </script>
 </body>
 </html>
